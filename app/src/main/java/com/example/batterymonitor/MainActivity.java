@@ -2,7 +2,12 @@ package com.example.batterymonitor;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.job.JobInfo;
+import android.app.job.JobParameters;
+import android.app.job.JobScheduler;
+import android.app.job.JobService;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -20,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
     public static final String extra_msg = "hello";
     private int prevCharge = 0;
     private int events = 0;
+    private boolean scheduled = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,6 +34,21 @@ public class MainActivity extends AppCompatActivity {
         Log.d("", "initializing");
         IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         Intent batteryStatus = registerReceiver(batteryStatusReceiver, ifilter);
+        Log.d("","Scheduling a job");
+        scheduleJob(getApplicationContext());
+    }
+
+    private static void scheduleJob(Context context) {
+        ComponentName serviceComponent = new ComponentName(context, TestJobService.class);
+        JobInfo.Builder builder = new JobInfo.Builder(0, serviceComponent);
+        builder.setMinimumLatency(1 * 1000); // wait at least
+        builder.setOverrideDeadline(3 * 1000); // maximum delay
+        //builder.setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED); // require unmetered network
+        //builder.setRequiresDeviceIdle(true); // device should be idle
+        //builder.setRequiresCharging(false); // we don't care if the device is charging or not
+        JobScheduler jobScheduler = context.getSystemService(JobScheduler.class);
+        jobScheduler.schedule(builder.build());
+        Log.d("", "Util->scheduleJob");
     }
 
     private BroadcastReceiver batteryStatusReceiver = new BroadcastReceiver() {
@@ -44,6 +65,9 @@ public class MainActivity extends AppCompatActivity {
             TextView statusView = findViewById(R.id.textViewStatus);
             statusView.setText("Events: " + events);
 
+//            if (!scheduled) {
+//                Util.scheduleJob(context);
+//            }
         }
     };
 
@@ -56,12 +80,40 @@ public class MainActivity extends AppCompatActivity {
         writeBatteryCharge(prevCharge, "(button)");
     }
 
+    public void runCpu(View view) {
+        Log.d("batteryStatusReceiver", "Calculating prime");
+        //writeBatteryCharge(prevCharge, "(button)");
+        int max = 200000;
+        int prime = calculatePrimeUntil(max);
+        TextView messageField = findViewById(R.id.messageField);
+        messageField.append("Prime: " + prime + " max was: " + max + "\n");
+    }
+
+    private boolean isPrime(int number) {
+        if (number < 3)
+            return false;
+        for (int i = 2; i < number; i++) {
+            if (number % i == 0)
+                return false;
+        }
+        return true;
+    }
+
+    private int calculatePrimeUntil(int max) {
+        int biggestPrime = 0;
+        for (int i = 3; i < max; i++) {
+            if (isPrime(i))
+                biggestPrime = i;
+        }
+        return biggestPrime;
+    }
+
     private void handleBatteryStatus(Intent batteryStatus) {
         int charge = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
         writeBatteryCharge(charge, "(event)");
     }
 
-    private void writeBatteryCharge(int charge, String msg) {
+    public void writeBatteryCharge(int charge, String msg) {
         String curDate = getCurrentTime();
 
         TextView messageField = findViewById(R.id.messageField);

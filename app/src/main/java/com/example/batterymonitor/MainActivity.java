@@ -13,9 +13,11 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
 import android.os.Bundle;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
+import android.text.method.BaseMovementMethod;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -36,6 +38,9 @@ public class MainActivity extends AppCompatActivity {
         Intent batteryStatus = registerReceiver(batteryStatusReceiver, ifilter);
         Log.d("","Scheduling a job");
         scheduleJob(getApplicationContext());
+        TextView messageField = findViewById(R.id.messageField);
+        messageField.setMovementMethod(new ScrollingMovementMethod());
+
     }
 
     private static void scheduleJob(Context context) {
@@ -80,13 +85,26 @@ public class MainActivity extends AppCompatActivity {
         writeBatteryCharge(prevCharge, "(button)");
     }
 
+    public class MyThread extends Thread {
+        public void run() {
+            Log.d("batteryStatusReceiver", "Thread is running");
+            int max = 250000;
+            int prime = calculatePrimeUntil(max);
+            TextView messageField = findViewById(R.id.messageField);
+            messageField.append("Prime: " + prime + " max was: " + max + "\n");
+        }
+    }
+
     public void runCpu(View view) {
+        int threadCount = 8;
         Log.d("batteryStatusReceiver", "Calculating prime");
-        //writeBatteryCharge(prevCharge, "(button)");
-        int max = 200000;
-        int prime = calculatePrimeUntil(max);
         TextView messageField = findViewById(R.id.messageField);
-        messageField.append("Prime: " + prime + " max was: " + max + "\n");
+        messageField.append("Calculation started on " + threadCount + " threads\n");
+        //writeBatteryCharge(prevCharge, "(button)");
+        for (int i = 0; i < threadCount; i++) {
+            MyThread myThread = new MyThread();
+            myThread.start();
+        }
     }
 
     private boolean isPrime(int number) {
